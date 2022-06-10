@@ -175,7 +175,7 @@ if __name__ == '__main__':
     card = get_card_data(card_id, ACCESS_TOKEN)[0]
     # check if the card is of the 'dataset/graph' type
     if card['type'] == "kpi":
-        export_graph_to_file(card)
+        export_graph_to_file(card_id, filename, file_type, ACCESS_TOKEN)
     else:
         print("card type not supported by system")
         sys.exit(EXIT_CODE_BAD_REQUEST)
