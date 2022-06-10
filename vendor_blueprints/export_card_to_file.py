@@ -9,6 +9,7 @@ import shipyard_utils as shipyard
 
 EXIT_CODE_INVALID_CREDENTIALS = 200
 EXIT_CODE_INVALID_ACCOUNT = 201
+EXIT_CODE_BAD_REQUEST = 202
 
 
 domo = Domo('client_id','secret_key',api_host='api.domo.com')
@@ -31,7 +32,11 @@ def get_access_token(email, password):
 	})
 
 	auth_headers = {'Content-Type' : 'application/json'}
-	auth_response = requests.post(auth_api, data=auth_body, headers=auth_headers)
+	try:
+		auth_response = requests.post(auth_api, data=auth_body, headers=auth_headers)
+	except Exception as e:
+		print("Request error: {e}")
+		sys.exit(EXIT_CODE_BAD_REQUEST)
 
 	if auth_response["success"] is False: # Failed to login for some reason
 		print(f"Authentication failed due to reason: {auth_response['reason']}")
