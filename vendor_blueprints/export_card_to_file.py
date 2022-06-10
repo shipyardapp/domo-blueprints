@@ -1,9 +1,8 @@
 import json
-import requests
-import pprint
-from pydomo import Domo
-from pydomo import DomoAPIClient
+import re
 import argparse
+import requests
+from pydomo import Domo
 import shipyard_utils as shipyard
 
 
@@ -38,7 +37,7 @@ def get_access_token(email, password):
 		print("Request error: {e}")
 		sys.exit(EXIT_CODE_BAD_REQUEST)
 
-	if auth_response["success"] is False: # Failed to login for some reason
+	if auth_response.json()["success"] is False: # Failed to login
 		print(f"Authentication failed due to reason: {auth_response['reason']}")
 		sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
 		
@@ -89,8 +88,28 @@ def get_card_id_from_name(name, access_token):
 	Retrieve the particular Card Id of a card given the name
 	"""
 	cards = get_all_card_ids()
-	card_dict = {}
 	for card_id in cards:
 		card = get_card_data(card_id, access_token)
 		card_name = card[0]['title']
-		card_dict[card_id] = card_name
+		# check if name matches with card name (ignore all caps)
+		if re.search(name, card_name, re.IGNORECASE):
+			return card_id
+
+			
+def export_document_card(card_id, access_token, filename):
+	# grab the document id from card metadata
+	card = get_card_data(card_id, access_token)[0]
+	document_id = card['metadata']['revisionId']
+	file_type = card['mimeType']
+	file_download_api = f"https://{DOMO_INSTANCE}.domo.com/api/data/v1/data-files/{document_id}/revisions/{document_id}?fileName=temp.jpg"
+	if "image" in file_type:
+		image_ext = filet_type.replace("image/", "")
+		# download image file
+	elif "csv" in file_type:
+		# download csv
+	
+	elif "excel" in filet_type:
+		# download excel
+
+	else:
+		# generic file download 
