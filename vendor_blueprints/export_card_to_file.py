@@ -108,8 +108,52 @@ def export_document_card(card_id, access_token, filename):
 	elif "csv" in file_type:
 		# download csv
 	
-	elif "excel" in filet_type:
+	elif "excel" in file_type:
 		# download excel
 
 	else:
 		# generic file download 
+
+
+def export_graph_to_file(card_id ,filename, file_type, access_token):
+	"""
+	Exports a file to one of the given file types: csv, ppt, excel
+	"""
+	export_api = f"https://{DOMO_INSTANCE}.domo.com/api/content/v1/cards/{card_id}/export"
+
+	card_headers = {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'accept': 'application/json, text/plain, */*',
+			'x-domo-authentication': access_token
+	}
+    
+    # make a dictionary to map user file_type with requested mimetype
+	filetype_map = {
+		"csv":"text/csv", 
+		"excel":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"ppt": "application/vnd.ms-powerpoint"
+	}
+    
+	body = {
+		"queryOverrides":{
+			"filters":[],
+			"dataControlContext":{
+				"filterGroupIds":[]
+			}
+		},
+		"watermark":'true',
+		"mobile":'false',
+		"showAnnotations":'true',
+		"type":"file",
+		"fileName": f"{filename}",
+		"accept": filetype_map[file_type]
+	}
+	# convert body to domo encoded payload
+	encoded_body = urllib.parse.quote(f"{body}")
+	encoded_body = encoded_body.replace("%27", "%22") # changing " to '
+	payload = f"request={encoded_body}"
+
+	export_response = requests.post(url=export_api, data=payload,
+		headers=card_headers, stream=True)
+	return export_response
+
