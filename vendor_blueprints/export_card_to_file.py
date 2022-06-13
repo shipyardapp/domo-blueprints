@@ -1,34 +1,37 @@
 import json
-import re
 import sys
 import argparse
 import requests
 import urllib.parse
-from pydomo import Domo
+import shipyard_utils as shipyard
 
 
 EXIT_CODE_INVALID_CREDENTIALS = 200
 EXIT_CODE_INVALID_ACCOUNT = 201
 EXIT_CODE_BAD_REQUEST = 202
+EXIT_CODE_INCORRECT_CARD_TYPE = 203
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--email', dest='client_id', required=True)
     parser.add_argument('--password', dest='password', required=True)
-    parser.add_argument('--client-id', dest='client_id', required=True)
-    parser.add_argument('--secret-key', dest='secret_key', required=True)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
-    parser.add_argument('--filename', dest='filename', required=True)
-    parser.add_argument('--file-type', dest='file_type', required=True)
     parser.add_argument('--card-id', dest='card_id', required=True)
+    parser.add_argument('--dest-file-name', dest='dest_file_name', required=True)
+    parser.add_argument('--dest-folder-path', 
+                        dest='dest_folder_path', 
+                        default='',
+                        required=True)
+    parser.add_argument('--file-type',
+                        dest='file_type',
+                        choices={'PPT', 'CSV', 'EXCEL'},
+                        required=True)
     args = parser.parse_args()
     return args
 
 
-DOMO_INSTANCE = "instance_ID"
-
-def get_access_token(email, password):
+def get_access_token(email, password, DOMO_INSTANCE):
     """
     Generate Access Token for use with internal content APIs.
 
@@ -45,40 +48,23 @@ def get_access_token(email, password):
 
     auth_headers = {'Content-Type' : 'application/json'}
     try:
-        auth_response = requests.post(auth_api, data=auth_body, headers=auth_headers)
+        auth_response = requests.post(auth_api, data=auth_body, 
+                                      headers=auth_headers)
     except Exception as e:
         print(f"Request error: {e}")
         sys.exit(EXIT_CODE_BAD_REQUEST)
 
-    if auth_response.json()["success"] is False: # Failed to login
-        print(f"Authentication failed due to reason: {auth_response['reason']}")
+    auth_response_json = auth_response.json()
+    if auth_response_json["success"] is False: # Failed to login
+        print(f"Authentication failed due to reason: {auth_response_json['reason']}")
         sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
         
     # else if the authentication succeeded
-    domo_token = auth_response.json()['sessionToken']
+    domo_token = auth_response_json['sessionToken']
     return domo_token
 
 
-def get_all_card_ids(client_id, secret_key):
-    """
-    Retrieve a list of all the card id's associated with a user's dashboard.
-
-    Returns:
-    card_id  -> list with all the card_ids
-    """
-    domo = Domo(client_id, secret_key ,api_host='api.domo.com')
-    pages = domo.pages
-    card_ids = []
-    for page in pages.list():
-        # get page data
-        page_data = pages.get(page['id'])
-        cards = page_data['cardIds']
-        card_ids += cards
-
-    return card_ids
-
-
-def get_card_data(card_id, access_token):
+def get_card_data(card_id, access_token, DOMO_INSTANCE):
     """
     Get metadata and property information of a single card
 
@@ -97,20 +83,8 @@ def get_card_data(card_id, access_token):
     return card_response.json()
 
 
-def get_card_id_from_name(name, client_id, secret_key, access_token):
-    """
-    Retrieve the particular Card Id of a card given the name
-    """
-    cards = get_all_card_ids()
-    for card_id in cards:
-        card = get_card_data(card_id, access_token)
-        card_name = card[0]['title']
-        # check if name matches with card name (ignore all caps)
-        if re.search(name, card_name, re.IGNORECASE):
-            return card_id
-
-
-def export_graph_to_file(card_id, filename, file_type, access_token):
+def export_graph_to_file(card_id, file_name, file_type, 
+                         access_token, DOMO_INSTANCE, folder_path=""):
     """
     Exports a file to one of the given file types: csv, ppt, excel
     """
@@ -140,7 +114,7 @@ def export_graph_to_file(card_id, filename, file_type, access_token):
         "mobile":'false',
         "showAnnotations":'true',
         "type":"file",
-        "fileName": f"{filename}",
+        "fileName": f"{file_name}",
         "accept": filetype_map[file_type]
     }
     # convert body to domo encoded payload
@@ -151,31 +125,42 @@ def export_graph_to_file(card_id, filename, file_type, access_token):
     export_response = requests.post(url=export_api, data=payload,
         headers=card_headers, stream=True)
     if export_response.status_code == 200:
-        with open(filename, 'wb') as fd:
+        destination_folder_name = shipyard.files.clean_folder_name(
+            folder_path)
+        destination_full_path = shipyard.files.combine_folder_and_file_name(
+        folder_name=destination_folder_name, file_name=file_name)
+        with open(destination_full_path, 'wb') as fd:
             # iterate through the blob 1MB at a time
             for chunk in export_response.iter_content(1024*1024):
                 fd.write(chunk)
-        print(f"{file_type} file:{filename} saved successfully!")
+        print(f"{file_type} file:{destination_full_path} saved successfully!")
     else:
         print(f"Request failed with status code {export_response.status_code}")
         sys.exit(EXIT_CODE_BAD_REQUEST)
 
 
-
-if __name__ == '__main__':
+def main():
     args = get_args()
     email = args.email
     password = args.password
     card_id = args.card_id
-    filename = args.filename
+    file_name = args.dest_file_name
+    folder_path = args.dest_folder_path
     file_type = args.file_type
-
+    folder_path = args.folder_path
     DOMO_INSTANCE = args.domo_instance
-    ACCESS_TOKEN = get_access_token(email, password)
-    card = get_card_data(card_id, ACCESS_TOKEN)[0]
+    ACCESS_TOKEN = get_access_token(email, password, DOMO_INSTANCE)
     # check if the card is of the 'dataset/graph' type
+    card = get_card_data(card_id, ACCESS_TOKEN, DOMO_INSTANCE)[0]
+    # export if card type is 'graph'
     if card['type'] == "kpi":
-        export_graph_to_file(card_id, filename, file_type, ACCESS_TOKEN)
+        export_graph_to_file(card_id, file_name, file_type,
+                             ACCESS_TOKEN, DOMO_INSTANCE, 
+                             folder_path=folder_path)
     else:
-        print("card type not supported by system")
-        sys.exit(EXIT_CODE_BAD_REQUEST)
+        print(f"card type {card_id} not supported by system")
+        sys.exit(EXIT_CODE_INCORRECT_CARD_TYPE)
+
+
+if __name__ == '__main__':
+    main()
