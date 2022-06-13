@@ -14,7 +14,7 @@ EXIT_CODE_INCORRECT_CARD_TYPE = 203
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--email', dest='client_id', required=True)
+    parser.add_argument('--email', dest='email', required=True)
     parser.add_argument('--password', dest='password', required=True)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--card-id', dest='card_id', required=True)
@@ -31,14 +31,14 @@ def get_args():
     return args
 
 
-def get_access_token(email, password, DOMO_INSTANCE):
+def get_access_token(email, password, domo_instance):
     """
     Generate Access Token for use with internal content APIs.
 
     email (str): email address of the user on domo.com
     password (str): login password of the user domo.com
     """
-    auth_api = f"https://{DOMO_INSTANCE}.domo.com/api/content/v2/authentication"
+    auth_api = f"https://{domo_instance}.domo.com/api/content/v2/authentication"
 
     auth_body = json.dumps({
         "method": "password",
@@ -64,7 +64,7 @@ def get_access_token(email, password, DOMO_INSTANCE):
     return domo_token
 
 
-def get_card_data(card_id, access_token, DOMO_INSTANCE):
+def get_card_data(card_id, access_token, domo_instance):
     """
     Get metadata and property information of a single card
 
@@ -74,21 +74,26 @@ def get_card_data(card_id, access_token, DOMO_INSTANCE):
     Returns:
     card_response -> dict with the metadata and details of the card.
     """
-    card_info_api = f"https://{DOMO_INSTANCE}.domo.com/api/content/v1/cards?urns={card_id}&parts=metadata,properties&includeFiltered=true"
+    card_info_api = f"https://{domo_instance}.domo.com/api/content/v1/cards"
+    params = {
+        'urns': card_id, 
+        'parts': ['metadata', 'properties'],
+        'includeFiltered': 'true'
+        }
     card_headers = {
             'Content-Type' : 'application/json',
             'x-domo-authentication': access_token
         }
-    card_response = requests.get(url=card_info_api, headers=card_headers)
+    card_response = requests.get(url=card_info_api, params=params ,headers=card_headers)
     return card_response.json()
 
 
 def export_graph_to_file(card_id, file_name, file_type, 
-                         access_token, DOMO_INSTANCE, folder_path=""):
+                         access_token, domo_instance, folder_path=""):
     """
     Exports a file to one of the given file types: csv, ppt, excel
     """
-    export_api = f"https://{DOMO_INSTANCE}.domo.com/api/content/v1/cards/{card_id}/export"
+    export_api = f"https://{domo_instance}.domo.com/api/content/v1/cards/{card_id}/export"
 
     card_headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -98,8 +103,8 @@ def export_graph_to_file(card_id, file_name, file_type,
     
     # make a dictionary to map user file_type with requested mimetype
     filetype_map = {
-        "csv":"text/csv", 
-        "excel":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "csv": "text/csv", 
+        "excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "ppt": "application/vnd.ms-powerpoint"
     }
     
@@ -148,14 +153,14 @@ def main():
     folder_path = args.dest_folder_path
     file_type = args.file_type
     folder_path = args.folder_path
-    DOMO_INSTANCE = args.domo_instance
-    ACCESS_TOKEN = get_access_token(email, password, DOMO_INSTANCE)
+    domo_instance = args.domo_instance
+    access_token = get_access_token(email, password, domo_instance)
     # check if the card is of the 'dataset/graph' type
-    card = get_card_data(card_id, ACCESS_TOKEN, DOMO_INSTANCE)[0]
+    card = get_card_data(card_id, access_token, domo_instance)[0]
     # export if card type is 'graph'
     if card['type'] == "kpi":
         export_graph_to_file(card_id, file_name, file_type,
-                             ACCESS_TOKEN, DOMO_INSTANCE, 
+                             access_token, domo_instance, 
                              folder_path=folder_path)
     else:
         print(f"card type {card_id} not supported by system")
