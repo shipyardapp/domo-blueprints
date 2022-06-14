@@ -122,7 +122,12 @@ def export_graph_to_file(card_id, file_name, file_type,
         "fileName": f"{file_name}",
         "accept": filetype_map[file_type]
     }
-    # convert body to domo encoded payload
+    # convert body to domo encoded payload, the API payload has to follow these rules:
+    # 1. The entire body has to be a single string
+    # 2. the payload HAS TO start with request=
+    # 3. the rest of the payload afterwards has to a dict with the special characters urlencoded
+    # 4. quotes used in the payload that are url encoded can only be double quotes (i.e "").
+    #    Python by default converts all dict quotes into single quotes so a conversion is neccessary
     encoded_body = urllib.parse.quote(f"{body}")
     encoded_body = encoded_body.replace("%27", "%22") # changing " to '
     payload = f"request={encoded_body}"
