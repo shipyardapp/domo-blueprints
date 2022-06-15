@@ -25,7 +25,7 @@ def get_stream_from_dataset_id(dataset_id, domo):
         stream_id (int): the Id of the found stream 
     """
     streams = domo.streams
-    limit = 99
+    limit = 1000
     offset = 0
     # get all streams
     stream_list = streams.list(limit, offset)
@@ -43,7 +43,7 @@ def run_stream_refresh(stream_id, domo):
     Executes/starts a stream 
     """
     streams = domo.streams
-    limit = 99
+    limit = 1000
     offset = 0
     # get list of all the stream executions
     execution_list = streams.list_executions(stream_id, limit, offset)
