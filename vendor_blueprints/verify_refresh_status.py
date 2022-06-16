@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--client-id', dest='client_id', required=True)
     parser.add_argument('--secret-key', dest='secret_key', required=True)
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
-    parser.add_argument('--execution-id', dest='execution_id', required=True)
+    parser.add_argument('--execution-id', dest='execution_id', required=False)
     args = parser.parse_args()
     return args
 
@@ -56,21 +56,46 @@ def determine_execution_status(execution_data):
     if execution_data['endedAt']:
         status = execution_data['currentState']
         if status == 'SUCCESS':
-            sys.exit(EXIT_CODE_FINAL_STATUS_SUCCESS)
+            exit_code = EXIT_CODE_FINAL_STATUS_SUCCESS
         elif status == 'INVALID':
-            sys.exit(EXIT_CODE_FINAL_STATUS_INVALID)
+            exit_code = EXIT_CODE_FINAL_STATUS_INVALID
         elif status == 'ABORTED':
-            sys.exit(EXIT_CODE_FINAL_STATUS_CANCELLED)
+            exit_code = EXIT_CODE_FINAL_STATUS_CANCELLED
         elif status == 'ACTIVE':
-            sys.exit(EXIT_CODE_STATUS_INCOMPLETE)
+            exit_code = EXIT_CODE_STATUS_INCOMPLETE
     else:
         # execution has not finished running
         print(f"Execution {execution_data['id']} not yet completed")
-        sys.exit(EXIT_CODE_STATUS_INCOMPLETE)
+        exit_code = EXIT_CODE_STATUS_INCOMPLETE
+    # return exit code
+    return exit_code
         
 
 def main():
-    pass
+    args = get_args()
+    # initialize domo with auth credentials
+    domo = pydomo.Domo(
+        args.client_id,
+        args.secret_key,
+        api_host='api.domo.com'
+    )
+    dataset_id = args.dataset_id
+    # create artifacts folder to save variable
+    base_folder_name = shipyard.logs.determine_base_artifact_folder(
+        'domo')
+    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
+        base_folder_name)
+    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
+    # get execution id from client and fallback to pickle file
+    if args.execution_id:
+        execution_id = args.execution_id
+    else:
+        execution_id = shipyard.logs.read_pickle_file(
+            artifact_subfolder_paths, 'execution_id')
+    # run check status
+    execution_data = get_execution_details(dataset_id, execution_id, domo)
+    exit_code_status = determine_execution_status(execution_data)
+    sys.exit(exit_code_status)
 
 
 if __name__ == "__main__":
