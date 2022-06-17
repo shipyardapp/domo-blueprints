@@ -12,6 +12,7 @@ EXIT_CODE_EXECUTION_ID_NOT_FOUND = 203
 EXIT_CODE_FINAL_STATUS_INVALID = 204
 EXIT_CODE_FINAL_STATUS_CANCELLED = 205
 EXIT_CODE_STATUS_INCOMPLETE = 206
+EXIT_CODE_UNKNOWN_STATUS = 207
 
 
 def get_args():
@@ -56,13 +57,20 @@ def determine_execution_status(execution_data):
     if execution_data['endedAt']:
         status = execution_data['currentState']
         if status == 'SUCCESS':
+            print("Domo has refreshed successfully ")
             exit_code = EXIT_CODE_FINAL_STATUS_SUCCESS
         elif status == 'INVALID':
+            print("Domo Refresh is invalid either due to system conflict or error")
             exit_code = EXIT_CODE_FINAL_STATUS_INVALID
         elif status == 'ABORTED':
+            print("Domo Refresh has been aborted")
             exit_code = EXIT_CODE_FINAL_STATUS_CANCELLED
         elif status == 'ACTIVE':
+            print(f"Domo Refresh is still currenctly ongoing: {status}")
             exit_code = EXIT_CODE_STATUS_INCOMPLETE
+        else:
+            print(f"Unknown Domo Refresh status: {status}")
+            exit_code = EXIT_CODE_UNKNOWN_STATUS
     else:
         # execution has not finished running
         print(f"Execution {execution_data['id']} not yet completed")
