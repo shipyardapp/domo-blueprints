@@ -7,8 +7,10 @@ import shipyard_utils as shipyard
 
 
 EXIT_CODE_INVALID_CREDENTIALS = 200
-EXIT_CODE_DATASET_NOT_FOUND = 201
-EXIT_CODE_REFRESH_ERROR = 202
+EXIT_CODE_INVALID_ACCOUNT = 201
+EXIT_CODE_BAD_REQUEST = 202
+EXIT_CODE_DATASET_NOT_FOUND = 203
+EXIT_CODE_REFRESH_ERROR = 204
 
 
 def get_args():
@@ -38,16 +40,31 @@ def get_access_token(email, password, domo_instance):
         "password": password
     })
 
-    auth_headers = {'Content-Type' : 'application/json'}
-    auth_response = requests.post(auth_api, data=auth_body, 
-                               headers=auth_headers)
+    auth_headers = {'Content-Type': 'application/json'}
+    try:
+        auth_response = requests.post(auth_api, data=auth_body,
+                                      headers=auth_headers)
+    except Exception as e:
+        print(f"Request error: {e}")
+        sys.exit(EXIT_CODE_BAD_REQUEST)
 
-    if auth_response.json()["success"] is False: # Failed to login
-        print(f"Authentication failed due to reason: {auth_response.json()['reason']}")
-        sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
-        
+    auth_response_json = auth_response.json()
+    try:
+        if auth_response_json["success"] is False:  # Failed to login
+            print(
+                f"Authentication failed due to reason: {auth_response_json['reason']}")
+            sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
+    except Exception as e:
+        if auth_response_json["status"] == 403:  # Failed to login
+            print(
+                f"Authentication failed due to domo instance {domo_instance} being invalid.")
+            sys.exit(EXIT_CODE_INVALID_ACCOUNT)
+        else:
+            print(f"Request error: {e}")
+            sys.exit(EXIT_CODE_BAD_REQUEST)
+            
     # else if the authentication succeeded
-    domo_token = auth_response.json()['sessionToken']
+    domo_token = auth_response_json['sessionToken']
     return domo_token
 
 
