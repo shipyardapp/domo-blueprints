@@ -84,7 +84,7 @@ def get_card_data(card_id, access_token, domo_instance):
             'Content-Type' : 'application/json',
             'x-domo-authentication': access_token
         }
-    card_response = requests.get(url=card_info_api, params=params ,headers=card_headers)
+    card_response = requests.get(url=card_info_api, params=params, headers=card_headers)
     return card_response.json()
 
 
