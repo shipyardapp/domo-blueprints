@@ -89,11 +89,11 @@ def get_stream_from_dataset_id(dataset_id, domo):
         sys.exit(EXIT_CODE_DATASET_NOT_FOUND)
 
 
-def run_stream_refresh(stream_id, access_token):
+def run_stream_refresh(stream_id, domo_instance, access_token):
     """
     Executes/starts a stream
     """
-    stream_post_api = f"https://shingai-dev-421238.domo.com/api/data/v1/streams/{stream_id}/executions"
+    stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
     card_headers = {
         'Content-Type': 'application/json',
         'x-domo-authentication': access_token
@@ -104,12 +104,13 @@ def run_stream_refresh(stream_id, access_token):
     stream_refresh_response = requests.post(stream_post_api,
                                             json=payload,
                                             headers=card_headers)
+
     if stream_refresh_response.status_code == 201:
         print(f"stream refresh for stream:{stream_id} successful")
         return stream_refresh_response.json()
     else:
         print(
-            f"encounted an error with the code {stream_refresh_response.status_code}")
+            f"Encountered an error with the code {stream_refresh_response.status_code}")
         sys.exit(EXIT_CODE_REFRESH_ERROR)
 
 
@@ -135,7 +136,7 @@ def main():
     # execute dataset refresh
     dataset_id = args.dataset_id
     stream_id = get_stream_from_dataset_id(dataset_id, domo)
-    refresh_data = run_stream_refresh(stream_id, access_token)
+    refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
     execution_id = refresh_data['executionId']
 
     # create artifacts folder to save variable
