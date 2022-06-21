@@ -105,10 +105,11 @@ def run_stream_refresh(stream_id, access_token):
                                             json=payload, 
                                             headers=card_headers)
     if stream_refresh_response.status_code == 201:
-       return stream_refresh_response.json()
+        print(f"stream refresh for stream:{stream_id} successful")
+        return stream_refresh_response.json()
     else:
-       print(f"encounted an error with the code {stream_refresh_response.status_code}")
-       sys.exit(EXIT_CODE_REFRESH_ERROR)
+        print(f"encounted an error with the code {stream_refresh_response.status_code}")
+        sys.exit(EXIT_CODE_REFRESH_ERROR)
        
        
 def main():
