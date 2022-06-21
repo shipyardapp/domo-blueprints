@@ -138,7 +138,7 @@ def main():
     shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
     
     # save execution id as variable
-    shipyard.create_pickle_file(artifact_subfolder_paths, 
+    shipyard.logs.create_pickle_file(artifact_subfolder_paths, 
                                 'execution_id', execution_id)
     
 if __name__ == "__main__":
