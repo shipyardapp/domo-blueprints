@@ -4,7 +4,6 @@ import argparse
 import requests
 import urllib.parse
 import shipyard_utils as shipyard
-import code
 
 
 EXIT_CODE_INVALID_CREDENTIALS = 200
