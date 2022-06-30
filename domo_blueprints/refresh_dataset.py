@@ -5,12 +5,10 @@ import pydomo
 import requests
 import shipyard_utils as shipyard
 
-
-EXIT_CODE_INVALID_CREDENTIALS = 200
-EXIT_CODE_INVALID_ACCOUNT = 201
-EXIT_CODE_BAD_REQUEST = 202
-EXIT_CODE_DATASET_NOT_FOUND = 203
-EXIT_CODE_REFRESH_ERROR = 204
+try:
+    import errors
+except BaseException:
+    from . import errors
 
 
 def get_args():
@@ -46,22 +44,22 @@ def get_access_token(email, password, domo_instance):
                                       headers=auth_headers)
     except Exception as e:
         print(f"Request error: {e}")
-        sys.exit(EXIT_CODE_BAD_REQUEST)
+        sys.exit(errors.EXIT_CODE_BAD_REQUEST)
 
     auth_response_json = auth_response.json()
     try:
         if auth_response_json["success"] is False:  # Failed to login
             print(
                 f"Authentication failed due to reason: {auth_response_json['reason']}")
-            sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
+            sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
     except Exception as e:
         if auth_response_json["status"] == 403:  # Failed to login
             print(
                 f"Authentication failed due to domo instance {domo_instance} being invalid.")
-            sys.exit(EXIT_CODE_INVALID_ACCOUNT)
+            sys.exit(errors.EXIT_CODE_INVALID_ACCOUNT)
         else:
             print(f"Request error: {e}")
-            sys.exit(EXIT_CODE_BAD_REQUEST)
+            sys.exit(errors.EXIT_CODE_BAD_REQUEST)
 
     # else if the authentication succeeded
     domo_token = auth_response_json['sessionToken']
@@ -86,7 +84,7 @@ def get_stream_from_dataset_id(dataset_id, domo):
             return stream['id']
     else:
         print(f"stream with dataSet id:{dataset_id} not found!")
-        sys.exit(EXIT_CODE_DATASET_NOT_FOUND)
+        sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
 def run_stream_refresh(stream_id, domo_instance, access_token):
@@ -111,7 +109,7 @@ def run_stream_refresh(stream_id, domo_instance, access_token):
     else:
         print(
             f"Encountered an error with the code {stream_refresh_response.status_code}")
-        sys.exit(EXIT_CODE_REFRESH_ERROR)
+        sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
 
 
 def main():
@@ -127,7 +125,7 @@ def main():
         print(
             'The client_id or secret_key you provided were invalid. Please check for typos and try again.')
         print(e)
-        sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
+        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
     email = args.email
     password = args.password
     domo_instance = args.domo_instance

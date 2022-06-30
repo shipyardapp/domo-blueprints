@@ -3,16 +3,10 @@ import sys
 import pydomo
 import shipyard_utils as shipyard
 
-
-EXIT_CODE_FINAL_STATUS_SUCCESS = 0
-EXIT_CODE_INVALID_CREDENTIALS = 200
-EXIT_CODE_INVALID_ACCOUNT = 201
-EXIT_CODE_DATASET_NOT_FOUND = 210
-EXIT_CODE_EXECUTION_ID_NOT_FOUND = 211
-EXIT_CODE_FINAL_STATUS_INVALID = 212
-EXIT_CODE_FINAL_STATUS_CANCELLED = 213
-EXIT_CODE_STATUS_INCOMPLETE = 214
-EXIT_CODE_UNKNOWN_STATUS = 215
+try:
+    import errors
+except BaseException:
+    from . import errors
 
 
 def get_args():
@@ -28,9 +22,9 @@ def get_args():
 def get_execution_details(dataset_id, execution_id, domo):
     """
     Gets the Stream ID of a particular stream using the dataSet id.
-    
+
     Returns:
-        stream_id (int): the Id of the found stream 
+        stream_id (int): the Id of the found stream
     """
     streams = domo.streams
     limit = 1000
@@ -42,14 +36,15 @@ def get_execution_details(dataset_id, execution_id, domo):
         if stream['dataSet']['id'] == dataset_id:
             # get execution details from id
             try:
-                execution_data = streams.get_execution(stream['id'], execution_id)
+                execution_data = streams.get_execution(
+                    stream['id'], execution_id)
                 return execution_data
             except Exception as e:
                 print(f"Error occured - {e}")
-                sys.exit(EXIT_CODE_EXECUTION_ID_NOT_FOUND)
+                sys.exit(errors.EXIT_CODE_EXECUTION_ID_NOT_FOUND)
     else:
         print(f"stream with dataSet id:{dataset_id} not found!")
-        sys.exit(EXIT_CODE_DATASET_NOT_FOUND)
+        sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
 def determine_execution_status(execution_data):
@@ -58,26 +53,26 @@ def determine_execution_status(execution_data):
         status = execution_data['currentState']
         if status == 'SUCCESS':
             print("Domo has refreshed successfully ")
-            exit_code = EXIT_CODE_FINAL_STATUS_SUCCESS
+            exit_code = errors.EXIT_CODE_FINAL_STATUS_SUCCESS
         elif status == 'INVALID':
             print("Domo Refresh is invalid either due to system conflict or error")
-            exit_code = EXIT_CODE_FINAL_STATUS_INVALID
+            exit_code = errors.EXIT_CODE_FINAL_STATUS_INVALID
         elif status == 'ABORTED':
             print("Domo Refresh has been aborted")
-            exit_code = EXIT_CODE_FINAL_STATUS_CANCELLED
+            exit_code = errors.EXIT_CODE_FINAL_STATUS_CANCELLED
         elif status == 'ACTIVE':
             print(f"Domo Refresh is still currenctly ongoing: {status}")
-            exit_code = EXIT_CODE_STATUS_INCOMPLETE
+            exit_code = errors.EXIT_CODE_STATUS_INCOMPLETE
         else:
             print(f"Unknown Domo Refresh status: {status}")
-            exit_code = EXIT_CODE_UNKNOWN_STATUS
+            exit_code = errors.EXIT_CODE_UNKNOWN_STATUS
     else:
         # execution has not finished running
         print(f"Execution {execution_data['id']} not yet completed")
-        exit_code = EXIT_CODE_STATUS_INCOMPLETE
+        exit_code = errors.EXIT_CODE_STATUS_INCOMPLETE
     # return exit code
     return exit_code
-        
+
 
 def main():
     args = get_args()
