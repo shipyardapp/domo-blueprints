@@ -21,6 +21,10 @@ def get_args():
     parser.add_argument('--password', dest='password', required=True)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
+    parser.add_argument(
+        '--developer-token',
+        dest='developer_token',
+        required=False)
     args = parser.parse_args()
     return args
 
@@ -114,6 +118,31 @@ def run_stream_refresh(stream_id, domo_instance, access_token):
         sys.exit(EXIT_CODE_REFRESH_ERROR)
 
 
+def run_stream_refresh_dev(stream_id, domo_instance, dev_token):
+    """
+    Executes/starts a stream
+    """
+    stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
+    card_headers = {
+        'Content-Type': 'application/json',
+        'x-domo-developer-token': dev_token
+    }
+    payload = {
+        "runType": "MANUAL"
+    }
+    print("Using developer token for stream refresh")
+    stream_refresh_response = requests.post(stream_post_api,
+                                            json=payload,
+                                            headers=card_headers)
+    if stream_refresh_response.status_code == 201:
+        print(f"stream refresh for stream:{stream_id} successful")
+        return stream_refresh_response.json()
+    else:
+        print(
+            f"Encountered an error with the code {stream_refresh_response.status_code}")
+        sys.exit(EXIT_CODE_REFRESH_ERROR)
+
+
 def main():
     args = get_args()
     # initialize domo with auth credentials
@@ -133,10 +162,18 @@ def main():
     domo_instance = args.domo_instance
     access_token = get_access_token(email, password, domo_instance)
 
+    developer_token = args.developer_token
     # execute dataset refresh
     dataset_id = args.dataset_id
     stream_id = get_stream_from_dataset_id(dataset_id, domo)
-    refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
+
+    # if developer token is enabled, try that instead
+    if args.developer_token:
+        refresh_data = run_stream_refresh_dev(
+            stream_id, domo_instance, developer_token)
+    else:
+        refresh_data = run_stream_refresh(
+            stream_id, domo_instance, access_token)
     execution_id = refresh_data['executionId']
 
     # create artifacts folder to save variable
