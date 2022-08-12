@@ -150,7 +150,6 @@ def main():
     email = args.email
     password = args.password
     domo_instance = args.domo_instance
-    access_token = get_access_token(email, password, domo_instance)
 
     developer_token = args.developer_token
     # execute dataset refresh
@@ -161,6 +160,7 @@ def main():
     if args.developer_token:
         refresh_data = run_stream_refresh_dev(stream_id, domo_instance, developer_token)
     else:
+        access_token = get_access_token(email, password, domo_instance)
         refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
     execution_id = refresh_data['executionId']
     
