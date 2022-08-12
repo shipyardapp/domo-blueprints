@@ -108,15 +108,9 @@ def run_stream_refresh(stream_id, access_token):
     if stream_refresh_response.status_code == 201:
        return stream_refresh_response.json()
     else:
-<<<<<<< Updated upstream
-       print(f"encounted an error with the code {stream_refresh_response.status_code}")
-       sys.exit(EXIT_CODE_REFRESH_ERROR)
-       
-       
-=======
         print(
             f"Encountered an error with the code {stream_refresh_response.status_code}")
-        sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
+        sys.exit(EXIT_CODE_REFRESH_ERROR)
 
 
 def run_stream_refresh_dev(stream_id, domo_instance, dev_token):
@@ -141,10 +135,10 @@ def run_stream_refresh_dev(stream_id, domo_instance, dev_token):
     else:
         print(
             f"Encountered an error with the code {stream_refresh_response.status_code}")
-        sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
+        sys.exit(EXIT_CODE_REFRESH_ERROR)
         
 
->>>>>>> Stashed changes
+
 def main():
     args = get_args()
     # initialize domo with auth credentials
@@ -157,13 +151,7 @@ def main():
     password = args.password
     domo_instance = args.domo_instance
     access_token = get_access_token(email, password, domo_instance)
-<<<<<<< Updated upstream
-    
-    # execute dataset refresh
-    dataset_id = args.dataset_id
-    stream_id = get_stream_from_dataset_id(dataset_id, domo)
-    refresh_data = run_stream_refresh(stream_id, access_token)
-=======
+
     developer_token = args.developer_token
     # execute dataset refresh
     dataset_id = args.dataset_id
@@ -174,7 +162,6 @@ def main():
         refresh_data = run_stream_refresh_dev(stream_id, domo_instance, developer_token)
     else:
         refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
->>>>>>> Stashed changes
     execution_id = refresh_data['executionId']
     
     # create artifacts folder to save variable
