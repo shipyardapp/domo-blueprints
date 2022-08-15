@@ -5,12 +5,10 @@ import pydomo
 import requests
 import shipyard_utils as shipyard
 
-
-EXIT_CODE_INVALID_CREDENTIALS = 200
-EXIT_CODE_INVALID_ACCOUNT = 201
-EXIT_CODE_BAD_REQUEST = 202
-EXIT_CODE_DATASET_NOT_FOUND = 203
-EXIT_CODE_REFRESH_ERROR = 204
+try:
+    import errors
+except BaseException:
+    from . import errors
 
 
 def get_args():
@@ -49,23 +47,23 @@ def get_access_token(email, password, domo_instance):
                                       headers=auth_headers)
     except Exception as e:
         print(f"Request error: {e}")
-        sys.exit(EXIT_CODE_BAD_REQUEST)
+        sys.exit(errors.EXIT_CODE_BAD_REQUEST)
 
     auth_response_json = auth_response.json()
     try:
         if auth_response_json["success"] is False:  # Failed to login
             print(
                 f"Authentication failed due to reason: {auth_response_json['reason']}")
-            sys.exit(EXIT_CODE_INVALID_CREDENTIALS)
+            sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
     except Exception as e:
         if auth_response_json["status"] == 403:  # Failed to login
             print(
                 f"Authentication failed due to domo instance {domo_instance} being invalid.")
-            sys.exit(EXIT_CODE_INVALID_ACCOUNT)
+            sys.exit(errors.EXIT_CODE_INVALID_ACCOUNT)
         else:
             print(f"Request error: {e}")
-            sys.exit(EXIT_CODE_BAD_REQUEST)
-            
+            sys.exit(errors.EXIT_CODE_BAD_REQUEST)
+
     # else if the authentication succeeded
     domo_token = auth_response_json['sessionToken']
     return domo_token
@@ -107,9 +105,9 @@ def create_dev_token_header(developer_token):
 def get_stream_from_dataset_id(dataset_id, domo):
     """
     Gets the Stream ID of a particular stream using the dataSet id.
-    
+
     Returns:
-        stream_id (int): the Id of the found stream 
+        stream_id (int): the Id of the found stream
     """
     streams = domo.streams
     limit = 1000
@@ -122,7 +120,7 @@ def get_stream_from_dataset_id(dataset_id, domo):
             return stream['id']
     else:
         print(f"stream with dataSet id:{dataset_id} not found!")
-        sys.exit(EXIT_CODE_DATASET_NOT_FOUND)
+        sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
 def run_stream_refresh(stream_id, domo_instance, auth_headers):
@@ -144,18 +142,23 @@ def run_stream_refresh(stream_id, domo_instance, auth_headers):
     else:
         print(
             f"Encountered an error with the code {stream_refresh_response.status_code}")
-        sys.exit(EXIT_CODE_REFRESH_ERROR)
-        
+        sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
 
 
 def main():
     args = get_args()
     # initialize domo with auth credentials
-    domo = pydomo.Domo(
-        args.client_id,
-        args.secret_key,
-        api_host='api.domo.com'
-    )
+    try:
+        domo = pydomo.Domo(
+            args.client_id,
+            args.secret_key,
+            api_host='api.domo.com'
+        )
+    except Exception as e:
+        print(
+            'The client_id or secret_key you provided were invalid. Please check for typos and try again.')
+        print(e)
+        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
     email = args.email
     password = args.password
     domo_instance = args.domo_instance
@@ -171,17 +174,18 @@ def main():
     stream_id = get_stream_from_dataset_id(dataset_id, domo)
     refresh_data = run_stream_refresh(stream_id, domo_instance, auth_headers)
     execution_id = refresh_data['executionId']
-    
+
     # create artifacts folder to save variable
     base_folder_name = shipyard.logs.determine_base_artifact_folder(
         'domo')
     artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
         base_folder_name)
     shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
-    
+
     # save execution id as variable
-    shipyard.logs.create_pickle_file(artifact_subfolder_paths, 
-                                'execution_id', execution_id)
+    shipyard.logs.create_pickle_file(artifact_subfolder_paths,
+                                     'execution_id', execution_id)
+
 
 if __name__ == "__main__":
     main()

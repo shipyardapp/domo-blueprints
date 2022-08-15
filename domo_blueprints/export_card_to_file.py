@@ -141,6 +141,9 @@ def export_graph_to_file(card_id, file_name, file_type,
     Exports a file to one of the given file types: csv, ppt, excel
     """
     export_api = f"https://{domo_instance}.domo.com/api/content/v1/cards/{card_id}/export"
+    # add additional export header data
+    auth_headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    auth_headers['accept'] = 'application/json, text/plain, */*'
 
     # make a dictionary to map user file_type with requested mimetype
     filetype_map = {
