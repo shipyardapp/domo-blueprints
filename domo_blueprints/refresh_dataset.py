@@ -21,13 +21,9 @@ def get_args():
     parser.add_argument('--password', dest='password', required=True)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
-<<<<<<< Updated upstream
-    parser.add_argument('--developer-token', dest='developer_token', required=False)
-=======
     parser.add_argument('--developer-token',
                         dest='developer_token',
                         required=False)
->>>>>>> Stashed changes
     args = parser.parse_args()
     return args
 
@@ -129,57 +125,19 @@ def get_stream_from_dataset_id(dataset_id, domo):
         sys.exit(EXIT_CODE_DATASET_NOT_FOUND)
 
 
-def run_stream_refresh(stream_id, access_token):
-    """
-    Executes/starts a stream 
-    """
-    stream_post_api = f"https://shingai-dev-421238.domo.com/api/data/v1/streams/{stream_id}/executions"
-    card_headers = {
-        'Content-Type' : 'application/json',
-        'x-domo-authentication': access_token
-        }
-    payload = {
-        "runType":"MANUAL"
-        }
-    stream_refresh_response = requests.post(stream_post_api, 
-                                            json=payload, 
-                                            headers=card_headers)
-    if stream_refresh_response.status_code == 201:
-       return stream_refresh_response.json()
-    else:
-        print(
-            f"Encountered an error with the code {stream_refresh_response.status_code}")
-        sys.exit(EXIT_CODE_REFRESH_ERROR)
-
-
-<<<<<<< Updated upstream
-def run_stream_refresh_dev(stream_id, domo_instance, dev_token):
-=======
 def run_stream_refresh(stream_id, domo_instance, auth_headers):
->>>>>>> Stashed changes
     """
     Executes/starts a stream
     """
     stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
-<<<<<<< Updated upstream
-    card_headers = {
-        'Content-Type': 'application/json',
-        'x-domo-developer-token': dev_token
-    }
-=======
->>>>>>> Stashed changes
     payload = {
         "runType": "MANUAL"
     }
     print("Using developer token for stream refresh")
     stream_refresh_response = requests.post(stream_post_api,
                                             json=payload,
-<<<<<<< Updated upstream
-                                            headers=card_headers)
-=======
                                             headers=auth_headers)
 
->>>>>>> Stashed changes
     if stream_refresh_response.status_code == 201:
         print(f"stream refresh for stream:{stream_id} successful")
         return stream_refresh_response.json()
@@ -201,31 +159,17 @@ def main():
     email = args.email
     password = args.password
     domo_instance = args.domo_instance
-<<<<<<< Updated upstream
-=======
     # create auth headers for sending requests
     if args.developer_token:
         auth_headers = create_dev_token_header(args.developer_token)
     else:
         access_token = get_access_token(email, password, domo_instance)
         auth_headers = create_pass_token_header(access_token)
->>>>>>> Stashed changes
 
-    developer_token = args.developer_token
     # execute dataset refresh
     dataset_id = args.dataset_id
     stream_id = get_stream_from_dataset_id(dataset_id, domo)
-<<<<<<< Updated upstream
-    
-    # if developer token is enabled, try that instead
-    if args.developer_token:
-        refresh_data = run_stream_refresh_dev(stream_id, domo_instance, developer_token)
-    else:
-        access_token = get_access_token(email, password, domo_instance)
-        refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
-=======
     refresh_data = run_stream_refresh(stream_id, domo_instance, auth_headers)
->>>>>>> Stashed changes
     execution_id = refresh_data['executionId']
     
     # create artifacts folder to save variable
