@@ -15,8 +15,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--client-id', dest='client_id', required=True)
     parser.add_argument('--secret-key', dest='secret_key', required=True)
-    parser.add_argument('--email', dest='email', required=True)
-    parser.add_argument('--password', dest='password', required=True)
+    parser.add_argument('--email', dest='email', required=False)
+    parser.add_argument('--password', dest='password', required=False)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
     parser.add_argument('--developer-token',
@@ -29,7 +29,7 @@ def get_args():
         parser.error(
             """This Blueprint requires at least one of the following to be provided:\n
             1) --developer-token\n
-            2) --username and --password""")
+            2) --email and --password""")
     if args.email and not args.password:
         parser.error('Please provide a password with your email.')
     if args.password and not args.email:

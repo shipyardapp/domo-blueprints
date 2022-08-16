@@ -39,7 +39,7 @@ def get_args():
         parser.error(
             """This Blueprint requires at least one of the following to be provided:\n
             1) --developer-token\n
-            2) --username and --password""")
+            2) --email and --password""")
     if args.email and not args.password:
         parser.error('Please provide a password with your email.')
     if args.password and not args.email:
