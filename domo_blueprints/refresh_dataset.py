@@ -15,11 +15,25 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--client-id', dest='client_id', required=True)
     parser.add_argument('--secret-key', dest='secret_key', required=True)
-    parser.add_argument('--email', dest='email', required=True)
-    parser.add_argument('--password', dest='password', required=True)
+    parser.add_argument('--email', dest='email', required=False)
+    parser.add_argument('--password', dest='password', required=False)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
+    parser.add_argument('--developer-token',
+                        dest='developer_token',
+                        required=False)
     args = parser.parse_args()
+
+    if not args.developer_token and not (
+            args.email or args.password):
+        parser.error(
+            """This Blueprint requires at least one of the following to be provided:\n
+            1) --developer-token\n
+            2) --email and --password""")
+    if args.email and not args.password:
+        parser.error('Please provide a password with your email.')
+    if args.password and not args.email:
+        parser.error('Please provide an email with your password.')
     return args
 
 
@@ -66,6 +80,39 @@ def get_access_token(email, password, domo_instance):
     return domo_token
 
 
+def create_pass_token_header(access_token):
+    """
+    Generate Auth headers for DOMO private API using email/password
+    authentication.
+
+    Returns:
+    auth_header -> dict with the authentication headers for use in
+    domo api requests.
+    """
+    auth_headers = {
+        'Content-Type': 'application/json',
+        'x-domo-authentication': access_token
+    }
+    return auth_headers
+
+
+def create_dev_token_header(developer_token):
+    """
+    Generate Auth headers for DOMO private API using developer
+    access tokens found at the following url:
+    https://<domo-instance>.domo.com/admin/security/accesstokens
+
+    Returns:
+    auth_header -> dict with the authentication headers for use in
+    domo api requests.
+    """
+    auth_headers = {
+        'Content-Type': 'application/json',
+        'x-domo-developer-token': developer_token
+    }
+    return auth_headers
+
+
 def get_stream_from_dataset_id(dataset_id, domo):
     """
     Gets the Stream ID of a particular stream using the dataSet id.
@@ -87,21 +134,18 @@ def get_stream_from_dataset_id(dataset_id, domo):
         sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
-def run_stream_refresh(stream_id, domo_instance, access_token):
+def run_stream_refresh(stream_id, domo_instance, auth_headers):
     """
     Executes/starts a stream
     """
     stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
-    card_headers = {
-        'Content-Type': 'application/json',
-        'x-domo-authentication': access_token
-    }
     payload = {
         "runType": "MANUAL"
     }
+    print("Using developer token for stream refresh")
     stream_refresh_response = requests.post(stream_post_api,
                                             json=payload,
-                                            headers=card_headers)
+                                            headers=auth_headers)
 
     if stream_refresh_response.status_code == 201:
         print(f"stream refresh for stream:{stream_id} successful")
@@ -129,12 +173,17 @@ def main():
     email = args.email
     password = args.password
     domo_instance = args.domo_instance
-    access_token = get_access_token(email, password, domo_instance)
+    # create auth headers for sending requests
+    if args.developer_token:
+        auth_headers = create_dev_token_header(args.developer_token)
+    else:
+        access_token = get_access_token(email, password, domo_instance)
+        auth_headers = create_pass_token_header(access_token)
 
     # execute dataset refresh
     dataset_id = args.dataset_id
     stream_id = get_stream_from_dataset_id(dataset_id, domo)
-    refresh_data = run_stream_refresh(stream_id, domo_instance, access_token)
+    refresh_data = run_stream_refresh(stream_id, domo_instance, auth_headers)
     execution_id = refresh_data['executionId']
 
     # create artifacts folder to save variable

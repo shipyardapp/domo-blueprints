@@ -13,8 +13,8 @@ except BaseException:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--email', dest='email', required=True)
-    parser.add_argument('--password', dest='password', required=True)
+    parser.add_argument('--email', dest='email', required=False)
+    parser.add_argument('--password', dest='password', required=False)
     parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--card-id', dest='card_id', required=True)
     parser.add_argument(
@@ -29,7 +29,22 @@ def get_args():
                         dest='file_type',
                         choices={'ppt', 'csv', 'excel'},
                         required=True)
+    parser.add_argument('--developer-token',
+                        dest='developer_token',
+                        required=False)
     args = parser.parse_args()
+
+    if not args.developer_token and not (
+            args.email or args.password):
+        parser.error(
+            """This Blueprint requires at least one of the following to be provided:\n
+            1) --developer-token\n
+            2) --email and --password""")
+    if args.email and not args.password:
+        parser.error('Please provide a password with your email.')
+    if args.password and not args.email:
+        parser.error('Please provide an email with your password.')
+
     return args
 
 
@@ -76,7 +91,40 @@ def get_access_token(email, password, domo_instance):
     return domo_token
 
 
-def get_card_data(card_id, access_token, domo_instance):
+def create_pass_token_header(access_token):
+    """
+    Generate Auth headers for DOMO private API using email/password
+    authentication.
+
+    Returns:
+    auth_header -> dict with the authentication headers for use in
+    domo api requests.
+    """
+    auth_headers = {
+        'Content-Type': 'application/json',
+        'x-domo-authentication': access_token
+    }
+    return auth_headers
+
+
+def create_dev_token_header(developer_token):
+    """
+    Generate Auth headers for DOMO private API using developer
+    access tokens found at the following url:
+    https://<domo-instance>.domo.com/admin/security/accesstokens
+
+    Returns:
+    auth_header -> dict with the authentication headers for use in
+    domo api requests.
+    """
+    auth_headers = {
+        'Content-Type': 'application/json',
+        'x-domo-developer-token': developer_token
+    }
+    return auth_headers
+
+
+def get_card_data(card_id, auth_headers, domo_instance):
     """
     Get metadata and property information of a single card
 
@@ -92,29 +140,22 @@ def get_card_data(card_id, access_token, domo_instance):
         'parts': ['metadata', 'properties'],
         'includeFiltered': 'true'
     }
-    card_headers = {
-        'Content-Type': 'application/json',
-        'x-domo-authentication': access_token
-    }
     card_response = requests.get(
         url=card_info_api,
         params=params,
-        headers=card_headers)
+        headers=auth_headers)
     return card_response.json()
 
 
 def export_graph_to_file(card_id, file_name, file_type,
-                         access_token, domo_instance, folder_path=""):
+                         auth_headers, domo_instance, folder_path=""):
     """
     Exports a file to one of the given file types: csv, ppt, excel
     """
     export_api = f"https://{domo_instance}.domo.com/api/content/v1/cards/{card_id}/export"
-
-    card_headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'accept': 'application/json, text/plain, */*',
-        'x-domo-authentication': access_token
-    }
+    # add additional export header data
+    auth_headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    auth_headers['accept'] = 'application/json, text/plain, */*'
 
     # make a dictionary to map user file_type with requested mimetype
     filetype_map = {
@@ -148,7 +189,7 @@ def export_graph_to_file(card_id, file_name, file_type,
     payload = f"request={encoded_body}"
 
     export_response = requests.post(url=export_api, data=payload,
-                                    headers=card_headers, stream=True)
+                                    headers=auth_headers, stream=True)
     if export_response.status_code == 200:
         destination_folder_name = shipyard.files.clean_folder_name(
             folder_path)
@@ -174,13 +215,19 @@ def main():
     folder_path = args.destination_folder_name
     file_type = args.file_type
     domo_instance = args.domo_instance
-    access_token = get_access_token(email, password, domo_instance)
+    # create auth headers for sending requests
+    if args.developer_token:
+        auth_headers = create_dev_token_header(args.developer_token)
+    else:
+        access_token = get_access_token(email, password, domo_instance)
+        auth_headers = create_pass_token_header(access_token)
+
     # check if the card is of the 'dataset/graph' type
-    card = get_card_data(card_id, access_token, domo_instance)[0]
+    card = get_card_data(card_id, auth_headers, domo_instance)[0]
     # export if card type is 'graph'
     if card['type'] == "kpi":
         export_graph_to_file(card_id, file_name, file_type,
-                             access_token, domo_instance,
+                             auth_headers, domo_instance,
                              folder_path=folder_path)
     else:
         print(f"card type {card_id} not supported by system")
