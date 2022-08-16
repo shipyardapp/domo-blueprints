@@ -16,17 +16,6 @@ def get_args():
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
     parser.add_argument('--execution-id', dest='execution_id', required=False)
     args = parser.parse_args()
-
-    if not args.developer_token and not (
-            args.email or args.password):
-        parser.error(
-            """This Blueprint requires at least one of the following to be provided:\n
-            1) --developer-token\n
-            2) --username and --password""")
-    if args.email and not args.password:
-        parser.error('Please provide a password with your email.')
-    if args.password and not args.email:
-        parser.error('Please provide an email with your password.')
     return args
 
 
@@ -60,27 +49,22 @@ def get_execution_details(dataset_id, execution_id, domo):
 
 def determine_execution_status(execution_data):
     # check if execution has finished first
-    if execution_data['endedAt']:
-        status = execution_data['currentState']
-        if status == 'SUCCESS':
-            print("Domo has refreshed successfully ")
-            exit_code = errors.EXIT_CODE_FINAL_STATUS_SUCCESS
-        elif status == 'INVALID':
-            print("Domo Refresh is invalid either due to system conflict or error")
-            exit_code = errors.EXIT_CODE_FINAL_STATUS_INVALID
-        elif status == 'ABORTED':
-            print("Domo Refresh has been aborted")
-            exit_code = errors.EXIT_CODE_FINAL_STATUS_CANCELLED
-        elif status == 'ACTIVE':
-            print(f"Domo Refresh is still currenctly ongoing: {status}")
-            exit_code = errors.EXIT_CODE_STATUS_INCOMPLETE
-        else:
-            print(f"Unknown Domo Refresh status: {status}")
-            exit_code = errors.EXIT_CODE_UNKNOWN_STATUS
-    else:
-        # execution has not finished running
-        print(f"Execution {execution_data['id']} not yet completed")
+    status = execution_data['currentState']
+    if status == 'SUCCESS':
+        print("Domo has refreshed successfully ")
+        exit_code = errors.EXIT_CODE_FINAL_STATUS_SUCCESS
+    elif status == 'INVALID':
+        print("Domo Refresh is invalid either due to system conflict or error")
+        exit_code = errors.EXIT_CODE_FINAL_STATUS_INVALID
+    elif status == 'ABORTED':
+        print("Domo Refresh has been aborted")
+        exit_code = errors.EXIT_CODE_FINAL_STATUS_CANCELLED
+    elif status == 'ACTIVE':
+        print(f"Domo Refresh is still currenctly ongoing with status {status}")
         exit_code = errors.EXIT_CODE_STATUS_INCOMPLETE
+    else:
+        print(f"Unknown Domo Refresh status: {status}")
+        exit_code = errors.EXIT_CODE_UNKNOWN_STATUS
     # return exit code
     return exit_code
 
@@ -108,6 +92,20 @@ def main():
             artifact_subfolder_paths, 'execution_id')
     # run check status
     execution_data = get_execution_details(dataset_id, execution_id, domo)
+
+    # create artifacts folder to save response
+    base_folder_name = shipyard.logs.determine_base_artifact_folder(
+        'domo')
+    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
+        base_folder_name)
+    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
+    domo_refresh_response_path = shipyard.files.combine_folder_and_file_name(
+        artifact_subfolder_paths['responses'],
+        f'status_{dataset_id}_{execution_id}_response.json')
+    shipyard.files.write_json_to_file(
+        execution_data,
+        domo_refresh_response_path)
+
     exit_code_status = determine_execution_status(execution_data)
     sys.exit(exit_code_status)
 
