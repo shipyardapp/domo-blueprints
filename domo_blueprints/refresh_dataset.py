@@ -23,6 +23,17 @@ def get_args():
                         dest='developer_token',
                         required=False)
     args = parser.parse_args()
+
+    if not args.developer_token and not (
+            args.email or args.password):
+        parser.error(
+            """This Blueprint requires at least one of the following to be provided:\n
+            1) --developer-token\n
+            2) --username and --password""")
+    if args.email and not args.password:
+        parser.error('Please provide a password with your email.')
+    if args.password and not args.email:
+        parser.error('Please provide an email with your password.')
     return args
 
 
@@ -76,7 +87,7 @@ def create_pass_token_header(access_token):
 
     Returns:
     auth_header -> dict with the authentication headers for use in
-    domo api requests. 
+    domo api requests.
     """
     auth_headers = {
         'Content-Type': 'application/json',
@@ -93,7 +104,7 @@ def create_dev_token_header(developer_token):
 
     Returns:
     auth_header -> dict with the authentication headers for use in
-    domo api requests. 
+    domo api requests.
     """
     auth_headers = {
         'Content-Type': 'application/json',

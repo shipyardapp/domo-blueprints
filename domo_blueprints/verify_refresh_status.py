@@ -16,6 +16,17 @@ def get_args():
     parser.add_argument('--dataset-id', dest='dataset_id', required=True)
     parser.add_argument('--execution-id', dest='execution_id', required=False)
     args = parser.parse_args()
+
+    if not args.developer_token and not (
+            args.email or args.password):
+        parser.error(
+            """This Blueprint requires at least one of the following to be provided:\n
+            1) --developer-token\n
+            2) --username and --password""")
+    if args.email and not args.password:
+        parser.error('Please provide a password with your email.')
+    if args.password and not args.email:
+        parser.error('Please provide an email with your password.')
     return args
 
 
