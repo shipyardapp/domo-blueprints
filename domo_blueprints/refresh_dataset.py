@@ -76,8 +76,12 @@ def get_access_token(email, password, domo_instance):
             sys.exit(errors.EXIT_CODE_BAD_REQUEST)
 
     # else if the authentication succeeded
-    domo_token = auth_response_json['sessionToken']
-    return domo_token
+    try:
+        domo_token = auth_response_json['sessionToken']
+        return domo_token
+    except BaseException as e:
+        print(f'Username/Password authentication is not accepted for your organization. Please use an access token instead.')
+        sys.exit(errors.EXIT_CODE_USERNAME_PASSWORD_NOT_ACCEPTED)
 
 
 def create_pass_token_header(access_token):
