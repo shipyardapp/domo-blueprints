@@ -132,3 +132,4 @@ dmypy.json
 *.sh
 *.csv
 wespoulsen-artifacts
+.vscode
