@@ -1,11 +1,8 @@
 import sys
 import argparse
-import json
 from pydomo import Domo
-import requests
 import shipyard_utils as shipyard
 import pandas as pd
-import logging
 try:
     import errors as ec
 except BaseException:
@@ -15,7 +12,6 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--client-id', dest='client_id', required=True)
     parser.add_argument('--secret-key', dest='secret_key', required=True)
-    # parser.add_argument('--domo-instance', dest='domo_instance', required=True)
     parser.add_argument('--file-to-load', dest='file_to_load', required=True)
     parser.add_argument('--dataset-name', dest='dataset_name', required=True)
     parser.add_argument('--dataset-description', dest = 'dataset_description', required=False)
@@ -68,7 +64,6 @@ def main():
     args = get_args()
     client_id = args.client_id
     secret = args.secret_key
-    # domo_instance = args.domo_instance
     file_to_load = args.file_to_load
     dataset_name = args.dataset_name
     dataset_description = args.dataset_description
