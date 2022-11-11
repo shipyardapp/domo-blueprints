@@ -2,8 +2,6 @@ import sys
 import argparse
 import json
 from pydomo import Domo
-from pydomo import streams, datasets, utilities
-from pydomo.Transport import DomoAPITransport
 import requests
 import shipyard_utils as shipyard
 import pandas as pd
@@ -12,10 +10,6 @@ try:
     import errors as ec
 except BaseException:
     from . import errors as ec
-try:
-    from helpers import UtilsHelper
-except BaseException:
-    from .helpers import UtilsHelper
 
 def get_args():
     parser = argparse.ArgumentParser()
