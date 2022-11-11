@@ -2,14 +2,20 @@ import sys
 import argparse
 import json
 from pydomo import Domo
+from pydomo import streams, datasets, utilities
+from pydomo.Transport import DomoAPITransport
 import requests
 import shipyard_utils as shipyard
 import pandas as pd
+import logging
 try:
     import errors as ec
 except BaseException:
     from . import errors as ec
-
+try:
+    from helpers import UtilsHelper
+except BaseException:
+    from .helpers import UtilsHelper
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -22,6 +28,10 @@ def get_args():
     args = parser.parse_args()
 
     return args
+
+
+def dataset_exists(datasets, dataset_name):
+    return datasets.name.str.contains(dataset_name).any()
 
 
 def get_csv(file_name:str):
@@ -80,18 +90,33 @@ def main():
         print(e)
         sys.exit(ec.EXIT_CODE_INVALID_CREDENTIALS)
 
+    all_datasets = domo.ds_list()
     df = get_csv(file_to_load) ## will exit if not found
-    dataset_id = upload_csv(df, domo_instance = domo, dataset_name = dataset_name, dataset_description = dataset_description)
-    ## store the response as a variable
-    base_folder_name = shipyard.logs.determine_base_artifact_folder(
-    'domo')
-    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
-        base_folder_name)
-    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
 
-    # save dataset id as variable
-    shipyard.logs.create_pickle_file(artifact_subfolder_paths,
-                                     'dataset_id', dataset_id)
+    ## if the dataset already exists
+    if dataset_exists(all_datasets, dataset_name):
+        matches = all_datasets[all_datasets.name.str.lower() == str(dataset_name).lower()]
+        if matches.shape[0] > 1:
+            print(f"Error in inserting new data because the dataset name is not unique. There are {matches.shape[0]} matches. Please provide the correct unique name.")
+            sys.exit(ec.EXIT_CODE_DUPLICATE_DATASET)
+        ds_id = matches.id.values[0]
+        # get the dataset id
+        domo.ds_update(ds_id,df)
+        print(f"Successfully replaced dataset {dataset_name}")
+
+    ## if it doesn't exist, then create a new one
+    else: 
+        dataset_id = upload_csv(df, domo_instance = domo, dataset_name = dataset_name, dataset_description = dataset_description)
+        ## store the response as a variable
+        base_folder_name = shipyard.logs.determine_base_artifact_folder(
+        'domo')
+        artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
+            base_folder_name)
+        shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
+
+        # save dataset id as variable
+        shipyard.logs.create_pickle_file(artifact_subfolder_paths,
+                                        'dataset_id', dataset_id)
 
 if __name__ == "__main__":
     main()
