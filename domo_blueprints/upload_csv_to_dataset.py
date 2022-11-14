@@ -12,7 +12,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--client-id', dest='client_id', required=True)
     parser.add_argument('--secret-key', dest='secret_key', required=True)
-    parser.add_argument('--file-to-load', dest='file_to_load', required=True)
+    parser.add_argument('--file-name', dest='file_name', required=True)
     parser.add_argument('--dataset-name', dest='dataset_name', required=True)
     parser.add_argument('--dataset-description', dest = 'dataset_description', required=False)
     args = parser.parse_args()
@@ -64,7 +64,7 @@ def main():
     args = get_args()
     client_id = args.client_id
     secret = args.secret_key
-    file_to_load = args.file_to_load
+    file_to_load = args.file_name
     dataset_name = args.dataset_name
     dataset_description = args.dataset_description
     try:
@@ -86,12 +86,18 @@ def main():
     if dataset_exists(all_datasets, dataset_name):
         matches = all_datasets[all_datasets.name.str.lower() == str(dataset_name).lower()]
         if matches.shape[0] > 1:
-            print(f"Error in inserting new data because the dataset name is not unique. There are {matches.shape[0]} matches. Please provide the correct unique name.")
+            print(f"Error in inserting new data because the dataset name is not unique. There are {matches.shape[0]} datasets with the same name {dataset_name}. Either provide a new name in the Blueprint or rename the other datasets in the Domo UI.")
             sys.exit(ec.EXIT_CODE_DUPLICATE_DATASET)
-        ds_id = matches.id.values[0]
+        dataset_id = matches.id.values[0]
         # get the dataset id
-        domo.ds_update(ds_id,df)
-        print(f"Successfully replaced dataset {dataset_name}")
+        try:
+            domo.ds_update(dataset_id,df)
+            print(f"Successfully replaced dataset {dataset_name}")
+        except Exception as e:
+            print("Dataset could not be updated")
+            print(e)
+            sys.exit(ec.EXIT_CODE_NON_API_DATASET)
+
 
     ## if it doesn't exist, then create a new one
     else: 
