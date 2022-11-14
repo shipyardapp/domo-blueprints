@@ -3,6 +3,7 @@ import argparse
 from pydomo import Domo
 import shipyard_utils as shipyard
 import pandas as pd
+import os
 try:
     import errors as ec
 except BaseException:
@@ -15,6 +16,7 @@ def get_args():
     parser.add_argument('--file-name', dest='file_name', required=True)
     parser.add_argument('--dataset-name', dest='dataset_name', required=True)
     parser.add_argument('--dataset-description', dest = 'dataset_description', required=False)
+    parser.add_argument("--folder-name", dest = 'folder_name', required = False)
     args = parser.parse_args()
 
     return args
@@ -24,17 +26,24 @@ def dataset_exists(datasets, dataset_name):
     return datasets.name.str.contains(dataset_name).any()
 
 
-def get_csv(file_name:str):
+def get_csv(file_name:str, folder_name = None):
     """
     Reads in a local file as a csv
     @params: 
         file_name : str - the name of the file to be loaded (provided by the --file-to-load flag)
     """
+    # if folder_name:
+    #     file_path = shipyard.files.combine_folder_and_file_name(file_name = file_name, folder_name = folder_name)
+    # else:
+    #     file_path = file_name
+    file_path = file_name
+    if folder_name is not None:
+        file_path = os.path.normpath(os.path.join(os.getcwd(),folder_name,file_name))
     try:
-        df = pd.read_csv(file_name)
+        df = pd.read_csv(file_path)
         return df
     except Exception as e:
-        print(f"File {file_name} was not found, ensure that the name of the file is entered correctly")
+        print(f"File {file_path} was not found, ensure that the name of the file and folder are entered correctly")
         sys.exit(ec.EXIT_CODE_FILE_NOT_FOUND)
 
 
@@ -67,6 +76,7 @@ def main():
     file_to_load = args.file_name
     dataset_name = args.dataset_name
     dataset_description = args.dataset_description
+    folder_name = args.folder_name
     try:
         domo = Domo(
             client_id,
@@ -80,7 +90,7 @@ def main():
         sys.exit(ec.EXIT_CODE_INVALID_CREDENTIALS)
 
     all_datasets = domo.ds_list()
-    df = get_csv(file_to_load) ## will exit if not found
+    df = get_csv(file_to_load, folder_name) ## will exit if not found
 
     ## if the dataset already exists
     if dataset_exists(all_datasets, dataset_name):

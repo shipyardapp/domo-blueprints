@@ -134,3 +134,4 @@ dmypy.json
 wespoulsen-artifacts
 .vscode
 helpers.py
+test_upload
