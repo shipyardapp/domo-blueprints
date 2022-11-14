@@ -32,10 +32,6 @@ def get_csv(file_name:str, folder_name = None):
     @params: 
         file_name : str - the name of the file to be loaded (provided by the --file-to-load flag)
     """
-    # if folder_name:
-    #     file_path = shipyard.files.combine_folder_and_file_name(file_name = file_name, folder_name = folder_name)
-    # else:
-    #     file_path = file_name
     file_path = file_name
     if folder_name is not None:
         file_path = os.path.normpath(os.path.join(os.getcwd(),folder_name,file_name))
