@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# local testing
+*.sh
+*.csv
+wespoulsen-artifacts
+.vscode
+helpers.py
+test_upload
