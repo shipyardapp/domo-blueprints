@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--dataset-description', dest = 'dataset_description', required=False)
     parser.add_argument("--folder-name", dest = 'folder_name', required = False)
     ## TODO add the --domo-schema as an argument and then use the infer_schema method if no argument is provided
-    parser.add_argument("--domo-schema", dest = 'domo_schema',required = False, default = None)
+    parser.add_argument("--domo-schema", dest = 'domo_schema',required = False, default = '')
     parser.add_argument("--insert-method", dest = 'insert_method' ,default = 'REPLACE',choices={"REPLACE","APPEND"},required=True)
     parser.add_argument("--dataset-id", required=False, default='',dest='dataset_id')
     args = parser.parse_args()
@@ -251,7 +251,7 @@ def main():
     folder_name = args.folder_name
     insert_method = args.insert_method
     dataset_id = args.dataset_id
-    if args.domo_schema is not None:
+    if args.domo_schema != '':
         domo_schema = args.domo_schema
         domo_schema = ast.literal_eval(domo_schema)
     
@@ -267,7 +267,7 @@ def main():
         print(e)
         sys.exit(ec.EXIT_CODE_INVALID_CREDENTIALS)
     # if the schema is provided, then use that otherwise infer the schema using sampling
-    if args.domo_schema is not None:
+    if args.domo_schema != '':
         dataset_schema = make_schema(domo_schema, file_to_load, folder_name)
     else:
         dataset_schema = infer_schema(file_to_load, folder_name, domo, k = 10000)
