@@ -26,7 +26,6 @@ def get_args():
     parser.add_argument('--dataset-name', dest='dataset_name', required=True)
     parser.add_argument('--dataset-description', dest = 'dataset_description', required=False)
     parser.add_argument("--folder-name", dest = 'folder_name', required = False)
-    ## TODO add the --domo-schema as an argument and then use the infer_schema method if no argument is provided
     parser.add_argument("--domo-schema", dest = 'domo_schema',required = False, default = '')
     parser.add_argument("--insert-method", dest = 'insert_method' ,default = 'REPLACE',choices={"REPLACE","APPEND"},required=True)
     parser.add_argument("--dataset-id", required=False, default='',dest='dataset_id')
@@ -106,8 +105,8 @@ def make_schema(data_types:list, file_name:str, folder_name:str):
     """Constructs a domo schema which is required for the stream upload
 
     Args:
-        data_types (list): _description_
-        file_name (str): _description_
+        data_types (list): The column name as well as the Domo data types in the form of [['Column1', 'STRING'],['Column2','DECIMAL']]
+        file_name (str): The path for the file to read
         folder_name (str): _description_
 
     Returns:
@@ -121,16 +120,19 @@ def make_schema(data_types:list, file_name:str, folder_name:str):
     if len(cols) != len(data_types):
         print("Error: The number data types does not equal the number of columns. Please number of domo data types provided matches the number of columns")
         sys.exit(ec.EXIT_CODE_COLUMN_MISMATCH)
+
     domo_schema = []
-    for dt, col in zip(data_types, cols):
-        dt_upper = str(dt).upper()
-        if dt_upper not in ['STRING','DECIMAL','LONG','DOUBLE','DATE','DATETIME']:
+    for pair in data_types:
+        col = pair[0]
+        dtype = pair[1]
+        dt_upper = str(dtype).upper()
+        if dt_upper not in ['STRING','DECIMAL','LONG','DOUBLE','DATE','DATETIME','INTEGER']:
             print(f"Error: {dt_upper} is not a valid domo data type. Please ensure one of STRING, DECIMAL, LONG, DOUBLE, DATE, DATETIME is selected")
             sys.exit(ec.EXIT_CODE_INVALID_DATA_TYPE)
         domo_schema.append(Column(dt_upper,col))
+    
+    return Schema(domo_schema)
 
-    schema = Schema(domo_schema)
-    return schema
 
 def dataset_exists(datasets, dataset_name):
     return datasets.name.str.contains(dataset_name).any()
