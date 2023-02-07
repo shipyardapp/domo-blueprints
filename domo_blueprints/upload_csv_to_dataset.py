@@ -7,7 +7,6 @@ import shipyard_utils as shipyard
 import pandas as pd
 import os
 import ast
-import json
 from random import random, randrange
 from itertools import islice
 from io import StringIO
@@ -200,45 +199,7 @@ def upload_stream(domo_instance:Domo, file_name:str, dataset_name:str, update_me
     
     commited_execution = streams.commit_execution(stream_id,execution_id)
     print("Successfully loaded dataset to domo")
-
-
-# def get_csv(file_name:str, folder_name = None):
-#     """
-#     Reads in a local file as a csv
-#     @params: 
-#         file_name : str - the name of the file to be loaded (provided by the --file-to-load flag)
-#     """
-#     file_path = file_name
-#     if folder_name is not None:
-#         file_path = os.path.normpath(os.path.join(os.getcwd(),folder_name,file_name))
-#     try:
-#         df = pd.read_csv(file_path)
-#         return df
-#     except Exception as e:
-#         print(f"File {file_path} was not found, ensure that the name of the file and folder are entered correctly")
-#         sys.exit(ec.EXIT_CODE_FILE_NOT_FOUND)
-
-
-# def upload_csv(dataframe:pd.DataFrame, domo_instance, dataset_name:str, dataset_description = None):
-#     """
-#     Uploads a pandas dataframe as a dataset in Domo.
-#     @params:
-#         dataframe : DataFrame - The pandas dataframe desired to load into Domo
-#         domo_instance : Domo - The Domo instance you are connected to 
-#         dataset_namme : str - The name that the dataset will be given in Domo
-#         dataset_description : str | None - Optional argument that provides a description for the dataset in Domo
-#     """
-#     try:
-#         if dataset_description is None:
-#             df_dataset = domo_instance.ds_create(dataframe,dataset_name)
-#         else:
-#             df_dataset = domo_instance.ds_create(dataframe,dataset_name,dataset_description)
-#         print(f"Successfully created dataset {dataset_name} with id {df_dataset}")
-#         return df_dataset
-#     except Exception as e:
-#         print(f"Error in uploading the csv to domo")
-#         print(e)
-#         sys.exit(ec.EXIT_CODE_UNKNOWN_ERROR)
+    return stream_id, execution_id
 
 
 def main():
@@ -272,8 +233,16 @@ def main():
     else:
         dataset_schema = infer_schema(file_to_load, folder_name, domo, k = 10000)
     
-    upload_stream(domo, file_to_load, dataset_name,insert_method, dataset_id, 
+    stream_id, execution_id = upload_stream(domo, file_to_load, dataset_name,insert_method, dataset_id, 
         folder_name, dataset_description, dataset_schema)
+
+    base_folder_name = shipyard.logs.determine_base_artifact_folder(
+        'domo')
+    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
+        base_folder_name)
+    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
+    shipyard.logs.create_pickle_file(artifact_subfolder_paths, 'stream_id', stream_id)
+    shipyard.logs.create_pickle_file(artifact_subfolder_paths, 'execution_id', execution_id)
 
 if __name__ == "__main__":
     main()
