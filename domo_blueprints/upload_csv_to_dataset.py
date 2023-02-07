@@ -63,10 +63,8 @@ def map_domo_to_pandas(domo_schema) -> dict:
 
 def reservoir_sample(iterable, k=1):
     """Select k items uniformly from iterable.
-
     Returns the whole population if there are k or fewer items
 
-    from https://bugs.python.org/issue41311#msg373733
     """
     iterator = iter(iterable)
     values = list(islice(iterator, k))
@@ -87,7 +85,7 @@ def infer_schema(file_name:str, folder_name, domo_instance:Domo, k=10000):
 
     Args:
         filepath (str): the filepath of the file to read
-        k (_type_): the number of random rows to sample
+        k (int): the number of random rows to sample
         domo_instance (Domo): the connection to Domo
 
     Returns:
