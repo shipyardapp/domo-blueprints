@@ -50,8 +50,6 @@ def map_domo_to_pandas(domo_schema) -> dict:
             pandas_dtypes[col] = 'datetime64[ns]'
         elif dtype == 'DECIMAL':
             pandas_dtypes[col] = 'float64'
-        elif dtype == 'INTEGER':
-            pandas_dtypes[col] = 'int64'
         elif dtype == 'LONG':
             pandas_dtypes[col] = 'int64'
         elif dtype == 'STRING':
@@ -126,7 +124,7 @@ def make_schema(data_types:list, file_name:str, folder_name:str):
         col = pair[0]
         dtype = pair[1]
         dt_upper = str(dtype).upper()
-        if dt_upper not in ['STRING','DECIMAL','LONG','DOUBLE','DATE','DATETIME','INTEGER']:
+        if dt_upper not in ['STRING','DECIMAL','LONG','DOUBLE','DATE','DATETIME']:
             print(f"Error: {dt_upper} is not a valid domo data type. Please ensure one of STRING, DECIMAL, LONG, DOUBLE, DATE, DATETIME is selected")
             sys.exit(ec.EXIT_CODE_INVALID_DATA_TYPE)
         domo_schema.append(Column(dt_upper,col))
