@@ -231,7 +231,7 @@ def upload_stream(domo_instance:Domo, file_name:str, dataset_name:str, update_me
     # if the regex match is selected, load all the files to a single domo dataset
     if isinstance(file_name, list):
         index = 0
-        for file_num, file in enumerate(file_name,start = 0):
+        for file in file_name:
             for part, chunk in enumerate(pd.read_csv(file, chunksize= CHUNKSIZE, dtype = pandas_dtypes),start = 1):
                 index += 1
                 execution = streams.upload_part(stream_id, execution_id, index, chunk.to_csv(index = False))
@@ -273,11 +273,6 @@ def main():
             'The client_id or secret_key you provided were invalid. Please check for typos and try again.')
         print(e)
         sys.exit(ec.EXIT_CODE_INVALID_CREDENTIALS)
-    # if the schema is provided, then use that otherwise infer the schema using sampling
-    # if args.domo_schema != '':
-    #     dataset_schema = make_schema(domo_schema, file_to_load, folder_name)
-    # else:
-    #     dataset_schema = infer_schema(file_to_load, folder_name, domo, k = 10000)
     
     if match_type == 'regex_match':
         file_names = shipyard.files.find_all_local_file_names(
