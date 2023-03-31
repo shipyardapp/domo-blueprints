@@ -279,6 +279,7 @@ def main():
         folder_name)
         matching_file_names = shipyard.files.find_all_file_matches(
         file_names, re.compile(file_to_load))
+        print(matching_file_names)
         print(f'{len(matching_file_names)} files found. Preparing to upload...')
         # if the schema is provided, then use that otherwise infer the schema using sampling
         if args.domo_schema != '':
