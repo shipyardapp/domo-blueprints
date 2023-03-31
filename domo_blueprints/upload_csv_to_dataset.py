@@ -136,7 +136,7 @@ def make_schema(data_types:list, file_name:str, folder_name:str):
         for file in file_name:
             file_path = file
             if folder_name is not None:
-                file_path = os.path.normpath(os.path.join(os.getcwd(),folder_name,file_name))
+                file_path = os.path.normpath(os.path.join(os.getcwd(),folder_name,file))
             df = pd.read_csv(file_path,nrows=1)
             cols = list(df.columns)
             if len(cols) != len(data_types):
