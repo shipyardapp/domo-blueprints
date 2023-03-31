@@ -234,13 +234,12 @@ def upload_stream(domo_instance:Domo, file_name:str, dataset_name:str, update_me
         for file in file_name:
             for part, chunk in enumerate(pd.read_csv(file, chunksize= CHUNKSIZE, dtype = pandas_dtypes),start = 1):
                 index += 1
-                execution = streams.upload_part(stream_id, execution_id, index, chunk.to_csv(index = False))
-                
+                execution = streams.upload_part(stream_id, execution_id, index, chunk.to_csv(index = False, header = False))
     # otherwise load a single file
     else:
         # Load the data into domo by chunks and parts
         for part, chunk in enumerate(pd.read_csv(file_path,chunksize=CHUNKSIZE,dtype=pandas_dtypes),start = 1):
-            execution = streams.upload_part(stream_id, execution_id,part,chunk.to_csv(index=False))
+            execution = streams.upload_part(stream_id, execution_id,part,chunk.to_csv(index=False, header = False))
 
     # commit the stream 
     commited_execution = streams.commit_execution(stream_id,execution_id)
