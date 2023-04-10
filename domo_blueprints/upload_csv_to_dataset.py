@@ -232,9 +232,10 @@ def upload_stream(domo_instance:Domo, file_name:str, dataset_name:str, update_me
     if isinstance(file_name, list):
         index = 0
         for file in file_name:
+            print(f"Uploading file {file}")
             for part, chunk in enumerate(pd.read_csv(file, chunksize= CHUNKSIZE, dtype = pandas_dtypes),start = 1):
+                print(f"Number of rows: {chunk.shape[0]}. Number of Columns: {chunk.shape[1]}")
                 index += 1
-                print(f"Uploading file {file} part {part}")
                 execution = streams.upload_part(stream_id, execution_id, index, chunk.to_csv(index = False, header = False))
     # otherwise load a single file
     else:
