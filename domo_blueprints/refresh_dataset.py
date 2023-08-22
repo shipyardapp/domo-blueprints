@@ -1,8 +1,9 @@
 import sys
-import argparse
+import time
 import json
 import pydomo
 import requests
+import argparse
 import shipyard_utils as shipyard
 
 try:
@@ -22,6 +23,7 @@ def get_args():
     parser.add_argument('--developer-token',
                         dest='developer_token',
                         required=False)
+    parser.add_argument("--wait-for-completion", dest="wait_for_completion")
     args = parser.parse_args()
 
     if not args.developer_token and not (
@@ -77,11 +79,70 @@ def get_access_token(email, password, domo_instance):
 
     # else if the authentication succeeded
     try:
-        domo_token = auth_response_json['sessionToken']
-        return domo_token
+        return auth_response_json['sessionToken']
     except BaseException as e:
-        print(f'Username/Password authentication is not accepted for your organization. Please use an access token instead.')
+        print(
+            'Username/Password authentication is not accepted for your organization. Please use an access token instead.'
+        )
         sys.exit(errors.EXIT_CODE_USERNAME_PASSWORD_NOT_ACCEPTED)
+
+
+def determine_execution_status(execution_data):
+    # check if execution has finished first
+    status = execution_data['currentState']
+    if status == 'ABORTED':
+        print("Domo Refresh has been aborted")
+        return errors.EXIT_CODE_FINAL_STATUS_CANCELLED
+    elif status == 'ACTIVE':
+        print(f"Domo Refresh is still currently ongoing with status {status}")
+        return errors.EXIT_CODE_STATUS_INCOMPLETE
+    elif status == 'INVALID':
+        print("Domo Refresh is invalid either due to system conflict or error")
+        return errors.EXIT_CODE_FINAL_STATUS_INVALID
+    elif status == 'SUCCESS':
+        print("Domo has refreshed successfully ")
+        return errors.EXIT_CODE_FINAL_STATUS_SUCCESS
+    else:
+        print(f"Unknown Domo Refresh status: {status}")
+        return errors.EXIT_CODE_UNKNOWN_STATUS
+
+
+def get_execution_details(dataset_id, execution_id, domo):
+    """
+    Gets the Stream ID of a particular stream using the dataSet id.
+
+    Returns:
+        stream_id (int): the Id of the found stream
+    """
+    streams = domo.streams
+    limit = 1000
+    offset = 0
+    # get all streams
+    stream_list = streams.list(limit, offset)
+    # return stream with matching dataset id
+    for stream in stream_list:
+        if stream['dataSet']['id'] == dataset_id:
+            # get execution details from id
+            try:
+                return streams.get_execution(stream['id'], execution_id)
+            except Exception as e:
+                print(f"Error occurred - {e}")
+                sys.exit(errors.EXIT_CODE_EXECUTION_ID_NOT_FOUND)
+    print(f"stream with dataSet id:{dataset_id} not found!")
+    sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
+
+
+def create_pickle_file(execution_id):
+    # create artifacts folder to save variable
+    base_folder_name = shipyard.logs.determine_base_artifact_folder(
+        'domo')
+    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
+        base_folder_name)
+    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
+
+    # save execution id as variable
+    shipyard.logs.create_pickle_file(artifact_subfolder_paths,
+                                     'execution_id', execution_id)
 
 
 def create_pass_token_header(access_token):
@@ -93,11 +154,10 @@ def create_pass_token_header(access_token):
     auth_header -> dict with the authentication headers for use in
     domo api requests.
     """
-    auth_headers = {
+    return {
         'Content-Type': 'application/json',
-        'x-domo-authentication': access_token
+        'x-domo-authentication': access_token,
     }
-    return auth_headers
 
 
 def create_dev_token_header(developer_token):
@@ -110,11 +170,10 @@ def create_dev_token_header(developer_token):
     auth_header -> dict with the authentication headers for use in
     domo api requests.
     """
-    auth_headers = {
+    return {
         'Content-Type': 'application/json',
-        'x-domo-developer-token': developer_token
+        'x-domo-developer-token': developer_token,
     }
-    return auth_headers
 
 
 def get_stream_from_dataset_id(dataset_id, domo):
@@ -133,9 +192,8 @@ def get_stream_from_dataset_id(dataset_id, domo):
     for stream in stream_list:
         if stream['dataSet']['id'] == dataset_id:
             return stream['id']
-    else:
-        print(f"stream with dataSet id:{dataset_id} not found!")
-        sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
+    print(f"stream with dataSet id:{dataset_id} not found!")
+    sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
 def run_stream_refresh(stream_id, domo_instance, auth_headers):
@@ -190,16 +248,17 @@ def main():
     refresh_data = run_stream_refresh(stream_id, domo_instance, auth_headers)
     execution_id = refresh_data['executionId']
 
-    # create artifacts folder to save variable
-    base_folder_name = shipyard.logs.determine_base_artifact_folder(
-        'domo')
-    artifact_subfolder_paths = shipyard.logs.determine_artifact_subfolders(
-        base_folder_name)
-    shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
-
-    # save execution id as variable
-    shipyard.logs.create_pickle_file(artifact_subfolder_paths,
-                                     'execution_id', execution_id)
+    create_pickle_file(execution_id)  # needed for backwards compatibility
+    if args.wait_for_completion == "TRUE":
+        execution_data = get_execution_details(dataset_id, execution_id, domo)
+        exit_code_status = determine_execution_status(execution_data)
+        print("Waiting for Domo Refresh to complete")
+        while exit_code_status == errors.EXIT_CODE_STATUS_INCOMPLETE:
+            print("Waiting for 60 seconds before checking again")
+            time.sleep(60)
+            execution_data = get_execution_details(dataset_id, execution_id, domo)
+            exit_code_status = determine_execution_status(execution_data)
+        sys.exit(exit_code_status)
 
 
 if __name__ == "__main__":
