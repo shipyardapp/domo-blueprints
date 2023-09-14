@@ -196,26 +196,35 @@ def get_stream_from_dataset_id(dataset_id, domo):
     sys.exit(errors.EXIT_CODE_DATASET_NOT_FOUND)
 
 
-def run_stream_refresh(stream_id, domo_instance, auth_headers):
+def run_stream_refresh(stream_id:str, domo_instance:pydomo.Domo, auth_headers:dict):
     """
     Executes/starts a stream
     """
-    stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
-    payload = {
-        "runType": "MANUAL"
-    }
-    print("Using developer token for stream refresh")
-    stream_refresh_response = requests.post(stream_post_api,
-                                            json=payload,
-                                            headers=auth_headers)
-
-    if stream_refresh_response.status_code == 201:
-        print(f"stream refresh for stream:{stream_id} successful")
-        return stream_refresh_response.json()
-    else:
-        print(
-            f"Encountered an error with the code {stream_refresh_response.status_code}")
+    streams = domo_instance.streams
+    try:
+        execution = streams.create_execution(stream_id)
+    except Exception as e:
+        print("Error in starting stream execution")
+        print(e)
         sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
+    else:
+        return execution
+    # stream_post_api = f"https://{domo_instance}.domo.com/api/data/v1/streams/{stream_id}/executions"
+    # payload = {
+    #     "runType": "MANUAL"
+    # }
+    # print("Using developer token for stream refresh")
+    # stream_refresh_response = requests.post(stream_post_api,
+    #                                         json=payload,
+    #                                         headers=auth_headers)
+
+    # if stream_refresh_response.status_code == 201:
+    #     print(f"stream refresh for stream:{stream_id} successful")
+    #     return stream_refresh_response.json()
+    # else:
+    #     print(
+    #         f"Encountered an error with the code {stream_refresh_response.status_code}")
+    #     sys.exit(errors.EXIT_CODE_REFRESH_ERROR)
 
 
 def main():
